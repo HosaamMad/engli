@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>اختبار وإدارة بنك الكلمات</title>
+  <style>
+    body {
+      background-color: #f4f4f4;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      direction: rtl;
+    }
+    .container {
+      background: #fff;
+      max-width: 800px;
+      margin: 30px auto;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      font-size: 36px;
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 20px;
+      margin: 10px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+    }
+    .btn-blue {
+      background-color: #007bff;
+      color: #fff;
+    }
+    .btn-blue:hover {
+      background-color: #0056b3;
+    }
+    .btn-green {
+      background-color: #28a745;
+      color: #fff;
+    }
+    .btn-green:hover {
+      background-color: #218838;
+    }
+    .btn-red {
+      background-color: #dc3545;
+      color: #fff;
+    }
+    .btn-red:hover {
+      background-color: #c82333;
+    }
+    /* الشاشة الرئيسية */
+    #homeScreen {
+      display: block;
+    }
+    /* واجهة الاختبار */
+    #quizContainer {
+      display: none;
+    }
+    #quizEnglishWord {
+      font-size: 30px;
+      font-weight: bold;
+      margin: 20px auto;
+      padding: 10px;
+      width: 80%;
+      max-width: 500px;
+      border: 2px solid #007bff;
+      border-radius: 8px;
+      background-color: #e9f2ff;
+      text-align: center;
+      color: #000;
+    }
+    #quizOptionsContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin: 20px auto;
+      width: 80%;
+      max-width: 500px;
+    }
+    .optionButton {
+      font-size: 24px;
+      padding: 15px;
+      border-radius: 10px;
+      border: none;
+      background-color: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .optionButton:hover {
+      background-color: #0056b3;
+    }
+    #quizTimerDisplay,
+    #scoreCounter,
+    #quizFeedback,
+    #quizScoreDisplay {
+      font-size: 20px;
+      margin: 10px 0;
+    }
+    /* واجهة إدارة بنك الكلمات */
+    #wordBankContainer {
+      display: none;
+    }
+    #form-container input[type="text"] {
+      width: 300px;
+      padding: 10px;
+      font-size: 20px;
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    #wordsListContainer {
+      margin: 20px auto;
+      width: 90%;
+      max-width: 750px;
+    }
+    #wordsTable {
+      margin: 0 auto;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      font-size: 20px;
+    }
+    th {
+      background-color: #007bff;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- الشاشة الرئيسية -->
+    <div id="homeScreen">
+      <h1>مرحبا بكم</h1>
+      <p>اختر ما تريد القيام به:</p>
+      <button class="btn-blue" id="startQuizBtn">ابدأ الاختبار</button>
+      <button class="btn-blue" id="manageWordsBtn">إدارة بنك الكلمات</button>
+    </div>
+    
+    <!-- واجهة الاختبار -->
+    <div id="quizContainer">
+      <h2>اختبار الكلمات</h2>
+      <p id="quizQuestionCounter">السؤال: 0 / 0</p>
+      <input type="text" id="quizEnglishWord" readonly>
+      <div id="quizOptionsContainer"></div>
+      <p id="quizTimerDisplay">الوقت المتبقي: 10 ثواني</p>
+      <p id="scoreCounter">صحيحة: 0, خاطئة: 0</p>
+      <p id="quizFeedback"></p>
+      <p id="quizScoreDisplay">النتيجة: 0</p>
+      <button class="btn-green" id="quizBackBtn">العودة للرئيسية</button>
+    </div>
+    
+    <!-- واجهة إدارة بنك الكلمات -->
+    <div id="wordBankContainer">
+      <h2>إدارة بنك الكلمات</h2>
+      <div id="form-container">
+        <input type="text" id="englishInput" placeholder="الكلمة الإنجليزية">
+        <input type="text" id="arabicInput" placeholder="الترجمة بالعربية">
+        <button class="btn-blue" id="addWordBtn">أضف الكلمة</button>
+      </div>
+      <div id="wordsListContainer">
+        <table id="wordsTable">
+          <thead>
+            <tr>
+              <th>الكلمة الإنجليزية</th>
+              <th>الترجمة</th>
+              <th>الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="wordsTableBody">
+            <!-- تعبئة ديناميكية -->
+          </tbody>
+        </table>
+      </div>
+      <button class="btn-green" id="wordBankBackBtn">العودة للرئيسية</button>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
