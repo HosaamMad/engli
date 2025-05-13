@@ -1,7 +1,9 @@
 const repoOwner = "HosaamMad"; // اسم مستخدم GitHub
 const repoName = "engli";       // اسم المستودع
 const filePath = "words.json";
-const token = "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"; // خزّنه بأمان ولا تشاركه!
+
+// استدعاء التوكن المخزن في GitHub Secrets عبر بيئة التشغيل
+const token = process.env.GITHUB_TOKEN;
 
 let wordBank = [];
 
@@ -24,7 +26,7 @@ async function updateWordsOnGitHub(newWords) {
     });
 
     if (!response.ok) {
-      throw new Error("فشل المصادقة، تأكد من صحة التوكن.");
+      throw new Error("⚠️ فشل المصادقة، تأكد من صحة التوكن.");
     }
 
     const data = await response.json();
@@ -35,14 +37,14 @@ async function updateWordsOnGitHub(newWords) {
       method: "PUT",
       headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        message: "تحديث بنك الكلمات من التطبيق",
+        message: "🚀 تحديث بنك الكلمات من التطبيق",
         content: updatedContent,
         sha: sha
       })
     });
 
     if (!updateResponse.ok) {
-      throw new Error("فشل تحديث البيانات، تحقق من الصلاحيات.");
+      throw new Error("⚠️ فشل تحديث البيانات، تحقق من الصلاحيات.");
     }
 
     alert("✅ تم تحديث بنك الكلمات بنجاح!");
