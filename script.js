@@ -2,7 +2,7 @@
 const repoOwner = "HosaamMad";       // اسم مستخدم GitHub
 const repoName = "engli";             // اسم المستودع
 const filePath = "words.json";
-const token = "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"; // مفتاح GitHub API
+const token = "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"; // مفتاح GitHub API
 
 /* المتغيرات العامة */
 let wordBank = [];
