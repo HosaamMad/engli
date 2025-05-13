@@ -3,10 +3,9 @@ const repoOwner = "HosaamMad";       // اسم مستخدم GitHub
 const repoName = "engli";             // اسم المستودع
 const filePath = "words.json";
 
-// استدعاء التوكن من البيئة، يتم تمريره من GitHub Secrets في بيئة التشغيل
-// ملاحظة: إذا كنت تستخدم GitHub Pages دون خادم وسيط، فإن هذه الطريقة لن تعمل لأن process.env غير متوفر في المتصفح.
-// في هذه الحالة احرص على استخدام خادم وسيط لتأمين التوكن.
-const token = process.env.GITHUB_TOKEN || "YOUR_FALLBACK_TOKEN_IF_NECESSARY";
+// استدعاء التوكن المُخزن في GitHub Secrets عبر البيئة
+// ملاحظة: process.env متاح فقط في بيئة الخادم؛ إذا كنت تستخدم GitHub Pages مباشرة، ستحتاج إلى خادم وسيط
+const token = process.env.GITHUB_TOKEN || "YOUR_FALLBACK_TOKEN";  
 
 let wordBank = [];
 let quizQuestions = [];
@@ -17,7 +16,7 @@ let wrongCount = 0;
 let timerInterval, timerTimeout;
 let timeLeft = 10;
 
-/* دالة مساعدة لتحويل الأحرف العربية والدعم العام إلى Base64 */
+/* دالة مساعدة لتحويل الأحرف بما في ذلك الأحرف العربية إلى Base64 */
 function base64EncodeUnicode(str) {
   return btoa(unescape(encodeURIComponent(str)));
 }
@@ -38,18 +37,18 @@ async function loadStoredWords() {
 // تحديث ملف words.json عبر GitHub API
 async function updateWordsOnGitHub(newWords) {
   try {
-    // الحصول على المعلومات الحالية للملف والـ SHA
+    // الحصول على البيانات الحالية للملف بما في ذلك SHA
     const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
       headers: { "Authorization": `token ${token}` }
     });
     if (!response.ok) {
-      throw new Error("فشل الحصول على بيانات الملف، تحقق من توكن GitHub والصلاحيات.");
+      throw new Error("فشل الحصول على بيانات الملف. تحقق من صلاحيات التوكن.");
     }
     const data = await response.json();
     const sha = data.sha;
     // تحويل المحتوى الجديد إلى Base64 مع دعم Unicode
     const updatedContent = base64EncodeUnicode(JSON.stringify(newWords, null, 2));
-
+    
     // إرسال طلب PUT لتحديث الملف
     const updateResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
       method: "PUT",
@@ -63,10 +62,11 @@ async function updateWordsOnGitHub(newWords) {
         sha: sha
       })
     });
-
+    
     if (!updateResponse.ok) {
-      throw new Error("فشل تحديث البيانات، تحقق من الصلاحيات.");
+      throw new Error("فشل تحديث البيانات. تحقق من صلاحيات التوكن.");
     }
+    
     alert("✅ تم تحديث بنك الكلمات بنجاح!");
     loadStoredWords();
   } catch (error) {
@@ -75,7 +75,7 @@ async function updateWordsOnGitHub(newWords) {
   }
 }
 
-// عرض الكلمات في إدارة بنك الكلمات
+// عرض بنك الكلمات في واجهة الإدارة
 function renderWordsManagement() {
   const tableBody = document.getElementById("wordsTableBody");
   tableBody.innerHTML = "";
@@ -155,10 +155,10 @@ function showQuizQuestion() {
   const currentQuestion = quizQuestions[currentQuizIndex];
   document.getElementById("quizEnglishWord").value = currentQuestion.word;
   
-  // إعداد الخيارات: الإجابة الصحيحة مع خيارين عشوائيين خاطئين
+  // إعداد الخيارات مع وضع الإجابة الصحيحة وخيارين خطأ
   let options = [currentQuestion.translation];
   while (options.length < 3) {
-    let randomOption = wordBank[Math.floor(Math.random() * wordBank.length)].translation;
+    const randomOption = wordBank[Math.floor(Math.random() * wordBank.length)].translation;
     if (!options.includes(randomOption)) {
       options.push(randomOption);
     }
@@ -187,7 +187,7 @@ function showQuizQuestion() {
   timerTimeout = setTimeout(autoMarkWrong, 10000);
 }
 
-// في حال انتهاء المهلة دون إجابة
+// في حال انتهاء الوقت دون إجابة
 function autoMarkWrong() {
   const feedbackElem = document.getElementById("quizFeedback");
   const currentQuestion = quizQuestions[currentQuizIndex];
@@ -199,7 +199,7 @@ function autoMarkWrong() {
   setTimeout(showQuizQuestion, 1000);
 }
 
-// التحقق من إجابة المستخدم
+// التحقق من الإجابة عند اختيار أحد الخيارات
 function checkQuizAnswer(selectedOption) {
   clearTimeout(timerTimeout);
   clearInterval(timerInterval);
@@ -219,7 +219,7 @@ function checkQuizAnswer(selectedOption) {
   setTimeout(showQuizQuestion, 1000);
 }
 
-// تحديث عدادات النتائج
+// تحديث عدادات الاختبار
 function updateScoreCounter() {
   document.getElementById("scoreCounter").textContent = `صحيحة: ${correctCount}, خاطئة: ${wrongCount}`;
   document.getElementById("quizScoreDisplay").textContent = `النتيجة: ${quizScore}`;
