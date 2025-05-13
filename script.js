@@ -1,11 +1,28 @@
-const repoOwner = "HosaamMad"; // اسم مستخدم GitHub
-const repoName = "engli";       // اسم المستودع
+/* إعدادات GitHub API */
+const repoOwner = "HosaamMad";       // اسم مستخدم GitHub
+const repoName = "engli";             // اسم المستودع
 const filePath = "words.json";
 
-// استدعاء التوكن المخزن في GitHub Secrets عبر بيئة التشغيل
-const token = process.env.GITHUB_TOKEN;
+// استدعاء التوكن من البيئة، يتم تمريره من GitHub Secrets في بيئة التشغيل
+// ملاحظة: إذا كنت تستخدم GitHub Pages دون خادم وسيط، فإن هذه الطريقة لن تعمل لأن process.env غير متوفر في المتصفح.
+// في هذه الحالة احرص على استخدام خادم وسيط لتأمين التوكن.
+const token = process.env.GITHUB_TOKEN || "YOUR_FALLBACK_TOKEN_IF_NECESSARY";
 
 let wordBank = [];
+let quizQuestions = [];
+let currentQuizIndex = 0;
+let quizScore = 0;
+let correctCount = 0;
+let wrongCount = 0;
+let timerInterval, timerTimeout;
+let timeLeft = 10;
+
+/* دالة مساعدة لتحويل الأحرف العربية والدعم العام إلى Base64 */
+function base64EncodeUnicode(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+/* دوال بنك الكلمات */
 
 // تحميل الكلمات من GitHub
 async function loadStoredWords() {
@@ -18,35 +35,38 @@ async function loadStoredWords() {
   }
 }
 
-// تحديث `words.json` على GitHub
+// تحديث ملف words.json عبر GitHub API
 async function updateWordsOnGitHub(newWords) {
   try {
+    // الحصول على المعلومات الحالية للملف والـ SHA
     const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
       headers: { "Authorization": `token ${token}` }
     });
-
     if (!response.ok) {
-      throw new Error("⚠️ فشل المصادقة، تأكد من صحة التوكن.");
+      throw new Error("فشل الحصول على بيانات الملف، تحقق من توكن GitHub والصلاحيات.");
     }
-
     const data = await response.json();
     const sha = data.sha;
-    const updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(newWords, null, 2))));
+    // تحويل المحتوى الجديد إلى Base64 مع دعم Unicode
+    const updatedContent = base64EncodeUnicode(JSON.stringify(newWords, null, 2));
 
+    // إرسال طلب PUT لتحديث الملف
     const updateResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
       method: "PUT",
-      headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
+      headers: {
+        "Authorization": `token ${token}`,
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({
-        message: "🚀 تحديث بنك الكلمات من التطبيق",
+        message: "تحديث بنك الكلمات من التطبيق",
         content: updatedContent,
         sha: sha
       })
     });
 
     if (!updateResponse.ok) {
-      throw new Error("⚠️ فشل تحديث البيانات، تحقق من الصلاحيات.");
+      throw new Error("فشل تحديث البيانات، تحقق من الصلاحيات.");
     }
-
     alert("✅ تم تحديث بنك الكلمات بنجاح!");
     loadStoredWords();
   } catch (error) {
@@ -55,14 +75,30 @@ async function updateWordsOnGitHub(newWords) {
   }
 }
 
-// عرض الكلمات في واجهة إدارة بنك الكلمات
+// عرض الكلمات في إدارة بنك الكلمات
 function renderWordsManagement() {
-  const wordsList = document.getElementById("wordsList");
-  wordsList.innerHTML = "";
-  wordBank.forEach(({ word, translation }) => {
-    const listItem = document.createElement("li");
-    listItem.textContent = `${word} - ${translation}`;
-    wordsList.appendChild(listItem);
+  const tableBody = document.getElementById("wordsTableBody");
+  tableBody.innerHTML = "";
+  wordBank.forEach((item, index) => {
+    const row = document.createElement("tr");
+    
+    const wordCell = document.createElement("td");
+    wordCell.textContent = item.word;
+    row.appendChild(wordCell);
+    
+    const translationCell = document.createElement("td");
+    translationCell.textContent = item.translation;
+    row.appendChild(translationCell);
+    
+    const actionsCell = document.createElement("td");
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "حذف";
+    deleteBtn.className = "btn-red";
+    deleteBtn.onclick = () => deleteWord(index);
+    actionsCell.appendChild(deleteBtn);
+    row.appendChild(actionsCell);
+    
+    tableBody.appendChild(row);
   });
 }
 
@@ -70,7 +106,7 @@ function renderWordsManagement() {
 function addWord() {
   const englishInput = document.getElementById("englishInput").value.trim();
   const arabicInput = document.getElementById("arabicInput").value.trim();
-
+  
   if (englishInput && arabicInput) {
     wordBank.push({ word: englishInput, translation: arabicInput });
     updateWordsOnGitHub(wordBank);
@@ -79,28 +115,151 @@ function addWord() {
   }
 }
 
-// التنقل بين الواجهات
-document.getElementById("startQuizBtn").addEventListener("click", () => {
-  document.getElementById("homeScreen").style.display = "none";
-  document.getElementById("quizContainer").style.display = "block";
-});
+// حذف كلمة من بنك الكلمات
+async function deleteWord(index) {
+  wordBank.splice(index, 1);
+  await updateWordsOnGitHub(wordBank);
+}
 
-document.getElementById("manageWordsBtn").addEventListener("click", () => {
+/* دوال الاختبار */
+
+// بدء الاختبار
+function startQuiz() {
+  if (wordBank.length < 3) {
+    alert("يجب أن يحتوي بنك الكلمات على 3 كلمات على الأقل للبدء في الاختبار.");
+    return;
+  }
+  quizQuestions = shuffleArray([...wordBank]);
+  currentQuizIndex = 0;
+  quizScore = 0;
+  correctCount = 0;
+  wrongCount = 0;
+  updateScoreCounter();
+  document.getElementById("quizQuestionCounter").textContent = `السؤال: ${currentQuizIndex + 1} / ${quizQuestions.length}`;
+  document.getElementById("quizScoreDisplay").textContent = `النتيجة: ${quizScore}`;
+  showQuizQuestion();
+}
+
+// عرض سؤال الاختبار مع الخيارات والمهلة الزمنية
+function showQuizQuestion() {
+  clearInterval(timerInterval);
+  clearTimeout(timerTimeout);
+  
+  if (currentQuizIndex >= quizQuestions.length) {
+    document.getElementById("quizFeedback").textContent = `انتهى الاختبار. نتيجتك: ${quizScore} من ${quizQuestions.length}`;
+    return;
+  }
+  
+  document.getElementById("quizFeedback").textContent = "";
+  document.getElementById("quizQuestionCounter").textContent = `السؤال: ${currentQuizIndex + 1} / ${quizQuestions.length}`;
+  const currentQuestion = quizQuestions[currentQuizIndex];
+  document.getElementById("quizEnglishWord").value = currentQuestion.word;
+  
+  // إعداد الخيارات: الإجابة الصحيحة مع خيارين عشوائيين خاطئين
+  let options = [currentQuestion.translation];
+  while (options.length < 3) {
+    let randomOption = wordBank[Math.floor(Math.random() * wordBank.length)].translation;
+    if (!options.includes(randomOption)) {
+      options.push(randomOption);
+    }
+  }
+  options = shuffleArray(options);
+  const optionsContainer = document.getElementById("quizOptionsContainer");
+  optionsContainer.innerHTML = "";
+  options.forEach(option => {
+    const btn = document.createElement("button");
+    btn.textContent = option;
+    btn.className = "optionButton";
+    btn.onclick = () => checkQuizAnswer(option);
+    optionsContainer.appendChild(btn);
+  });
+  
+  // بدء العد التنازلي (10 ثوانٍ)
+  timeLeft = 10;
+  document.getElementById("quizTimerDisplay").textContent = `الوقت المتبقي: ${timeLeft} ثواني`;
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    document.getElementById("quizTimerDisplay").textContent = `الوقت المتبقي: ${timeLeft} ثواني`;
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+    }
+  }, 1000);
+  timerTimeout = setTimeout(autoMarkWrong, 10000);
+}
+
+// في حال انتهاء المهلة دون إجابة
+function autoMarkWrong() {
+  const feedbackElem = document.getElementById("quizFeedback");
+  const currentQuestion = quizQuestions[currentQuizIndex];
+  feedbackElem.textContent = `❌ انتهت المهلة. الإجابة الصحيحة: ${currentQuestion.translation}`;
+  wrongCount++;
+  updateScoreCounter();
+  currentQuizIndex++;
+  clearInterval(timerInterval);
+  setTimeout(showQuizQuestion, 1000);
+}
+
+// التحقق من إجابة المستخدم
+function checkQuizAnswer(selectedOption) {
+  clearTimeout(timerTimeout);
+  clearInterval(timerInterval);
+  const currentQuestion = quizQuestions[currentQuizIndex];
+  const feedbackElem = document.getElementById("quizFeedback");
+  
+  if (selectedOption === currentQuestion.translation) {
+    feedbackElem.textContent = "✅ صحيح!";
+    quizScore++;
+    correctCount++;
+  } else {
+    feedbackElem.textContent = `❌ خاطئ. الإجابة الصحيحة: ${currentQuestion.translation}`;
+    wrongCount++;
+  }
+  updateScoreCounter();
+  currentQuizIndex++;
+  setTimeout(showQuizQuestion, 1000);
+}
+
+// تحديث عدادات النتائج
+function updateScoreCounter() {
+  document.getElementById("scoreCounter").textContent = `صحيحة: ${correctCount}, خاطئة: ${wrongCount}`;
+  document.getElementById("quizScoreDisplay").textContent = `النتيجة: ${quizScore}`;
+}
+
+// دالة خلط المصفوفة (Fisher–Yates)
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+/* التنقل بين الواجهات */
+function displayQuiz() {
   document.getElementById("homeScreen").style.display = "none";
+  document.getElementById("wordBankContainer").style.display = "none";
+  document.getElementById("quizContainer").style.display = "block";
+  startQuiz();
+}
+
+function displayWordBank() {
+  document.getElementById("homeScreen").style.display = "none";
+  document.getElementById("quizContainer").style.display = "none";
   document.getElementById("wordBankContainer").style.display = "block";
   loadStoredWords();
-});
+}
 
-document.getElementById("quizBackBtn").addEventListener("click", () => {
+function displayHome() {
   document.getElementById("quizContainer").style.display = "none";
-  document.getElementById("homeScreen").style.display = "block";
-});
-
-document.getElementById("wordBankBackBtn").addEventListener("click", () => {
   document.getElementById("wordBankContainer").style.display = "none";
   document.getElementById("homeScreen").style.display = "block";
-});
+}
 
+/* أحداث الأزرار */
+document.getElementById("startQuizBtn").addEventListener("click", displayQuiz);
+document.getElementById("manageWordsBtn").addEventListener("click", displayWordBank);
+document.getElementById("quizBackBtn").addEventListener("click", displayHome);
+document.getElementById("wordBankBackBtn").addEventListener("click", displayHome);
 document.getElementById("addWordBtn").addEventListener("click", addWord);
 
 window.onload = loadStoredWords;
