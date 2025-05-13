@@ -1,10 +1,10 @@
 /* إعدادات GitHub API */
-const repoOwner = "HosaamMad"; // استبدل باسم مستخدم GitHub الخاص بك
-const repoName = "engli";         // اسم المستودع
+const repoOwner = "HosaamMad";       // اسم مستخدم GitHub
+const repoName = "engli";             // اسم المستودع
 const filePath = "words.json";
-const token = "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";        // استبدل بمفتاح GitHub API الخاص بك
+const token = "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"; // مفتاح GitHub API
 
-/* المتغيرات العالمية */
+/* المتغيرات العامة */
 let wordBank = [];
 let quizQuestions = [];
 let currentQuizIndex = 0;
@@ -14,6 +14,15 @@ let wrongCount = 0;
 let timerInterval;
 let timerTimeout;
 let timeLeft = 10;
+
+/* دالة مساعدة لتحويل سلسلة تحتوي على أحرف Unicode إلى Base64 */
+function base64EncodeUnicode(str) {
+  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
+    function(match, p1) {
+      return String.fromCharCode('0x' + p1);
+    }
+  ));
+}
 
 /* دوال بنك الكلمات */
 
@@ -31,20 +40,21 @@ async function loadStoredWords() {
 // تحديث ملف words.json على GitHub
 async function updateWordsOnGitHub(newWords) {
   try {
-    // الحصول على المحتوى الحالي والـ sha الخاص به
+    // الحصول على المحتوى الحالي والـ SHA الخاص بالملف
     const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
-      headers: { "Authorization": `Bearer ${token}` }
+      headers: { "Authorization": `token ${token}` }
     });
     const data = await response.json();
+    console.log("Current file data:", data);
     const sha = data.sha;
-    // ترميز المحتوى الجديد بصيغة Base64
-    const updatedContent = btoa(JSON.stringify(newWords, null, 2));
+    // ترميز المحتوى الجديد مع دعم الأحرف غير اللاتينية
+    const updatedContent = base64EncodeUnicode(JSON.stringify(newWords, null, 2));
     
-    // إرسال الطلب باستخدام PUT لتحديث الملف
+    // إرسال طلب PUT لتحديث الملف
     const updateResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
       method: "PUT",
       headers: {
-        "Authorization": `Bearer ${token}`,
+        "Authorization": `token ${token}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -53,6 +63,9 @@ async function updateWordsOnGitHub(newWords) {
         sha: sha
       })
     });
+    
+    const updateData = await updateResponse.json();
+    console.log("Update response:", updateData);
     
     if (updateResponse.ok) {
       alert("✅ تم تحديث بنك الكلمات على GitHub بنجاح!");
@@ -65,7 +78,7 @@ async function updateWordsOnGitHub(newWords) {
   }
 }
 
-// عرض الكلمات في جدول إدارة بنك الكلمات
+// عرض بنك الكلمات في جدول إدارة بنك الكلمات
 function renderWordsManagement() {
   const tableBody = document.getElementById("wordsTableBody");
   tableBody.innerHTML = "";
@@ -113,6 +126,7 @@ async function deleteWord(index) {
 
 /* دوال الاختبار */
 
+// بدء الاختبار
 function startQuiz() {
   if (wordBank.length < 3) {
     alert("يجب أن يحتوي بنك الكلمات على 3 كلمات على الأقل للبدء في الاختبار.");
@@ -129,6 +143,7 @@ function startQuiz() {
   showQuizQuestion();
 }
 
+// عرض السؤال الحالي مع الخيارات والمهلة الزمنية
 function showQuizQuestion() {
   clearInterval(timerInterval);
   clearTimeout(timerTimeout);
@@ -141,7 +156,7 @@ function showQuizQuestion() {
   const currentQuestion = quizQuestions[currentQuizIndex];
   document.getElementById("quizEnglishWord").value = currentQuestion.word;
   
-  // إعداد الخيارات: الإجابة الصحيحة مع خيارين خاطئين
+  // إعداد الخيارات: الإجابة الصحيحة مع خيارين عشوائيين خاطئين
   let options = [currentQuestion.translation];
   while (options.length < 3) {
     const randomOption = wordBank[Math.floor(Math.random() * wordBank.length)].translation;
@@ -173,6 +188,7 @@ function showQuizQuestion() {
   timerTimeout = setTimeout(autoMarkWrong, 10000);
 }
 
+// في حال انتهاء المهلة دون إجابة
 function autoMarkWrong() {
   const feedbackElem = document.getElementById("quizFeedback");
   const currentQuestion = quizQuestions[currentQuizIndex];
@@ -184,6 +200,7 @@ function autoMarkWrong() {
   setTimeout(showQuizQuestion, 1000);
 }
 
+// التحقق من الإجابة عند اختيار أحد الخيارات
 function checkQuizAnswer(selectedOption) {
   clearTimeout(timerTimeout);
   clearInterval(timerInterval);
@@ -202,11 +219,13 @@ function checkQuizAnswer(selectedOption) {
   setTimeout(showQuizQuestion, 1000);
 }
 
+// تحديث عدادات النتائج
 function updateScoreCounter() {
   document.getElementById("scoreCounter").textContent = `صحيحة: ${correctCount}, خاطئة: ${wrongCount}`;
   document.getElementById("quizScoreDisplay").textContent = `النتيجة: ${quizScore}`;
 }
 
+// دالة خلط المصفوفة (Fisher–Yates)
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
