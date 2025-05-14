@@ -39,9 +39,17 @@
     .btn-green:hover { background-color: #218838; }
     .btn-red { background-color: #dc3545; color: #fff; }
     .btn-red:hover { background-color: #c82333; }
-    /* الأقسام المختلفة */
-    #homeScreen, #quizContainer, #wordBankContainer {
+    /* إخفاء الأقسام التي لا تظهر في البداية */
+    #quizContainer, #wordBankContainer {
       display: none;
+    }
+    #quizOptionsContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin: 20px auto;
+      width: 80%;
+      max-width: 500px;
     }
   </style>
 </head>
@@ -59,7 +67,7 @@
     <div id="quizContainer">
       <h2>اختبار الكلمات</h2>
       <p id="quizQuestionCounter">السؤال: 0 / 0</p>
-      <input type="text" id="quizEnglishWord" readonly>
+      <input type="text" id="quizEnglishWord" readonly />
       <div id="quizOptionsContainer"></div>
       <p id="quizTimerDisplay">الوقت المتبقي: 10 ثواني</p>
       <p id="scoreCounter">صحيحة: 0, خاطئة: 0</p>
